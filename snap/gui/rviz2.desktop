@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=RViz 2
+GenericName=3D Robot Visualizer
+Comment=3D visualization tool for ROS 2
+Exec=rviz2
+Icon=${SNAP}/meta/gui/rviz2.png
+Terminal=false
+Categories=Development;Science;Utility;
+Keywords=ROS;ROS2;robot;visualization;rviz;
+StartupNotify=true

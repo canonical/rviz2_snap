@@ -1,0 +1,83 @@
+name: rviz2
+base: core24
+adopt-info: rviz2
+summary: 3D visualization tool for ROS 2
+description: |
+  RViz is a 3D visualizer for the Robot Operating System 2 (ROS 2).
+
+  This is a classic snap: rviz2 runs with full access to the host system so it
+  can subscribe to topics published by ROS 2 nodes running on the host and load
+  visualization plugins installed on the host under /opt/ros/jazzy.
+license: BSD-3-Clause
+
+confinement: classic
+grade: stable
+
+platforms:
+  amd64:
+  arm64:
+
+package-repositories:
+  - type: apt
+    url: http://packages.ros.org/ros2/ubuntu
+    components: [main]
+    formats: [deb]
+    suites: [noble]
+    key-id: C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
+    key-server: keyserver.ubuntu.com
+
+environment:
+  ROS_VERSION: "2"
+  ROS_DISTRO: jazzy
+  ROS_HOME: $SNAP_USER_DATA/ros
+  LD_LIBRARY_PATH: $SNAP/opt/ros/jazzy/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR:$SNAP/opt/ros/jazzy/lib:${LD_LIBRARY_PATH}
+
+apps:
+  rviz2:
+    command: opt/ros/snap/bin/rviz2
+    command-chain: [snap/command-chain/ros2-launch]
+
+parts:
+  ros2-launch:
+    plugin: nil
+    source: snap/local
+    override-build: |
+      craftctl default
+      install -D -m 0755 launch \
+        "$CRAFT_PART_INSTALL/snap/command-chain/ros2-launch"
+
+  rviz2:
+    plugin: colcon
+    source: https://github.com/ros2/rviz.git
+    source-branch: jazzy
+    override-pull: |
+      craftctl default
+      version="$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' rviz2/package.xml)"
+      craftctl set version="$version"
+    colcon-packages-ignore:
+      - rviz_rendering_tests
+      - rviz_visual_testing_framework
+    colcon-cmake-args:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DBUILD_TESTING=OFF
+    build-environment:
+      - ROS_VERSION: "2"
+      - ROS_DISTRO: jazzy
+    build-attributes:
+      - enable-patchelf
+    prime:
+      # Do NOT ship the Mesa/GL/DRI userspace.
+      # This is a classic snap: the graphics stack must come from the host,
+      # whose kernel DRM driver it matches.
+      - -usr/lib/*/dri
+      - -usr/lib/*/libgallium*
+      - -usr/lib/*/libGLX_mesa.so*
+      - -usr/lib/*/libGLX_indirect.so*
+      - -usr/lib/*/libEGL_mesa.so*
+      - -usr/lib/*/libGL.so*
+      - -usr/lib/*/libGLX.so*
+      - -usr/lib/*/libGLdispatch.so*
+      - -usr/lib/*/libOpenGL.so*
+      - -usr/lib/*/libEGL.so*
+      - -usr/lib/*/libGLESv*
+      - -usr/lib/*/libdrm*
