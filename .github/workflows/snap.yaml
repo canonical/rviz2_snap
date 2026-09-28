@@ -41,3 +41,21 @@ jobs:
       # Publish directly to the jazzy/candidate channel.
       snap-track: jazzy
       snap-risk: candidate
+      # GUI smoke test: launch rviz2 headless under xvfb on every runner (amd64
+      # and arm64). The classic snap strips its own Mesa and relies on host GL,
+      # so we install a software GL stack (llvmpipe) on the runner. rviz2 is a
+      # long-running GUI app, so we run it under `timeout`: surviving until the
+      # timeout kills it (exit 124) is success. A crash (e.g. SIGSEGV -> 139)
+      # fails the job. This doubles as a regression guard for the Mesa fix.
+      snap-test-script: |
+        #!/bin/bash
+        set -euxo pipefail
+        sudo apt-get update
+        sudo apt-get install -y xvfb libgl1-mesa-dri
+        set +e
+        timeout 40 xvfb-run -a -s "-screen 0 1280x1024x24" rviz2
+        rc=$?
+        set -e
+        # 124 = timeout killed a still-running rviz2 (success).
+        [ "$rc" -eq 124 ] || { echo "rviz2 did not survive startup (rc=$rc)"; exit 1; }
+        echo "rviz2 launched and survived the timeout window."
