@@ -1,0 +1,43 @@
+name: snap
+on:
+  push:
+    tags:
+      - 'jazzy/*'
+    branches:
+      - jazzy
+    paths-ignore:
+      - .github/workflows/promote.yaml
+      - README.md
+      - .gitignore
+  pull_request:
+    branches:
+      - jazzy
+    paths-ignore:
+      - .github/workflows/promote.yaml
+      - README.md
+      - .gitignore
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      git-ref:
+        required: false
+        type: string
+        default: ${{ github.ref }}
+
+jobs:
+  snap:
+    permissions:
+      contents: read
+      actions: write
+    uses: canonical/robotics-actions-workflows/.github/workflows/snap.yaml@main
+    secrets:
+      snapstore-login: ${{ secrets.STORE_LOGIN }}
+    with:
+      git-ref: ${{ inputs.git-ref }}
+      # Build natively on both architectures: amd64 and arm64.
+      runs-on: '["ubuntu-latest", "ubuntu-24.04-arm"]'
+      # rviz2 is a classic snap; the default --dangerous alone cannot install it.
+      snap-install-args: --classic --dangerous
+      # Publish directly to the jazzy/candidate channel.
+      snap-track: jazzy
+      snap-risk: candidate
