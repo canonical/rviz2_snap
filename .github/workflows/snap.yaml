@@ -7,7 +7,7 @@ on:
       - jazzy
     paths-ignore:
       - .github/workflows/promote.yaml
-      - README.md
+      - readme.md
       - .gitignore
   pull_request:
     branches:
