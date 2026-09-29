@@ -58,7 +58,7 @@ jobs:
           libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 \
           libxcb-xkb1 libxkbcommon-x11-0
         set +e
-        timeout 40 xvfb-run -a -s "-screen 0 1280x1024x24" rviz2
+        timeout 40 xvfb-run -a rviz2
         rc=$?
         set -e
         # 124 = timeout killed a still-running rviz2 (success).
