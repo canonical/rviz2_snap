@@ -51,7 +51,12 @@ jobs:
         #!/bin/bash
         set -euxo pipefail
         sudo apt-get update
-        sudo apt-get install -y xvfb libgl1 libglx-mesa0 libgl1-mesa-dri libopengl0 libegl1
+        sudo apt-get install -y \
+          xvfb \
+          libgl1 libglx-mesa0 libgl1-mesa-dri libopengl0 libegl1 \
+          libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
+          libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 \
+          libxcb-xkb1 libxkbcommon-x11-0
         set +e
         timeout 40 xvfb-run -a -s "-screen 0 1280x1024x24" rviz2
         rc=$?
