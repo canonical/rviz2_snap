@@ -1,69 +1,53 @@
 #!/bin/bash
-#
-# command-chain launcher for the classic rviz2 snap.
-#
-# The upstream ros2-jazzy snapcraft extension injects a similar script, but that
-# extension does not support classic confinement. We therefore replicate the
-# relevant behaviour here:
-#   1. Source the ROS 2 deb underlay staged at $SNAP/opt/ros/jazzy.
-#   2. Source the colcon-built overlay staged at $SNAP/opt/ros/snap.
-#   3. Because this is a *classic* snap, optionally overlay a matching ROS 2
-#      installation found on the host so rviz2 can discover and dlopen plugins
-#      installed on the host system.
 
 set -e
 
-ROS_DISTRO="${ROS_DISTRO:-jazzy}"
-
-case "$SNAP_ARCH" in
-    amd64) ARCH_TRIPLET='x86_64-linux-gnu' ;;
-    arm64) ARCH_TRIPLET='aarch64-linux-gnu' ;;
-    armhf) ARCH_TRIPLET='arm-linux-gnueabihf' ;;
-    *)
-        echo "Unsupported architecture '$SNAP_ARCH'."
-        exit 1
-        ;;
-esac
+# This snap is built exclusively for ROS 2 Jazzy.
+# If the user has sourced a different ROS distro before launching,
+# detect that, warn, and start from a clean ROS
+# environment before we build our own.
+SNAP_ROS_DISTRO=jazzy
+if [ -n "${ROS_DISTRO:-}" ] && [ "${ROS_DISTRO}" != "${SNAP_ROS_DISTRO}" ]; then
+    echo "rviz2 (snap): warning: host environment has ROS_DISTRO='${ROS_DISTRO}'," \
+         "but this snap provides '${SNAP_ROS_DISTRO}'. Ignoring the host ROS" \
+         "environment to avoid ABI conflicts." >&2
+    # Drop the ROS-exclusive path state sourced from the foreign distro.
+    unset AMENT_PREFIX_PATH CMAKE_PREFIX_PATH COLCON_PREFIX_PATH \
+          ROS_PACKAGE_PATH
+fi
+export ROS_DISTRO="${SNAP_ROS_DISTRO}"
+export ROS_VERSION="2"
+export ROS_HOME="${ROS_HOME:-${SNAP_USER_DATA}/ros}"
 
 original_args=("$@")
 
-source_if_present() {
-    local prefix="$1"
-    local setup="$prefix/local_setup.bash"
-    if [ -f "$setup" ]; then
-        export ROS_WORKSPACE_CURRENT_PREFIX="$prefix"
-        # shellcheck disable=SC1090,SC1091
-        source "$setup"
-    fi
-}
+# Multiarch tuple for the target architecture. snapd exports SNAP_ARCH;
+# map it to the GNU triplet used throughout the snap's library layout.
+case "${SNAP_ARCH}" in
+    amd64) ARCH_TRIPLET="x86_64-linux-gnu" ;;
+    arm64) ARCH_TRIPLET="aarch64-linux-gnu" ;;
+    *) echo "rviz2 (snap): unsupported architecture '${SNAP_ARCH}'" >&2; exit 1 ;;
+esac
 
-# --- Snap-provided ROS 2 environment ---------------------------------------
-export LD_LIBRARY_PATH="$SNAP/opt/ros/$ROS_DISTRO/lib:$SNAP/opt/ros/$ROS_DISTRO/lib/$ARCH_TRIPLET:$SNAP/opt/ros/$ROS_DISTRO/opt/rviz_ogre_vendor/lib:$SNAP/usr/lib/$ARCH_TRIPLET:$SNAP/usr/lib:${LD_LIBRARY_PATH}"
+# Snap ROS 2 environment
+export LD_LIBRARY_PATH="\
+${SNAP}/opt/ros/${ROS_DISTRO}/lib:\
+${SNAP}/opt/ros/${ROS_DISTRO}/lib/${ARCH_TRIPLET}:\
+${SNAP}/usr/lib/${ARCH_TRIPLET}:\
+${SNAP}/usr/lib:\
+${LD_LIBRARY_PATH}"
 
-# --- Host graphics + system library fallback (classic only) ----------------
-# snapcraft prunes libraries it considers provided by the base (e.g. libicu74,
-# libX11, libGL/libGLX). Because this is a classic snap running in the host
-# namespace, we append the host multiarch directories so those libraries — and
-# the GPU userspace matching the host kernel driver — resolve at runtime.
-for hostlib in \
-    "/usr/lib/$ARCH_TRIPLET" \
-    "/lib/$ARCH_TRIPLET" \
-    "/usr/lib/$ARCH_TRIPLET/dri" \
-    "/usr/lib/$ARCH_TRIPLET/pulseaudio"; do
-    [ -d "$hostlib" ] && export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:$hostlib"
-done
+# Necessary so the host base GL libs are loaded from the host
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/lib/${ARCH_TRIPLET}:/lib/${ARCH_TRIPLET}"
 
-# Deb underlay (rviz vendor packages, ament index, rmw, ...).
-source_if_present "$SNAP/opt/ros/$ROS_DISTRO"
-# colcon-built overlay (rviz_common, rviz_rendering, rviz_default_plugins, rviz2).
-source_if_present "$SNAP/opt/ros/snap"
+# Qt platform plugins
+qt_plugins="${SNAP}/usr/lib/${ARCH_TRIPLET}/qt5/plugins"
+export QT_PLUGIN_PATH="${qt_plugins}${QT_PLUGIN_PATH:+:${QT_PLUGIN_PATH}}"
+export QT_QPA_PLATFORM_PLUGIN_PATH="${qt_plugins}/platforms"
 
-# --- Optional host overlay (classic only) ----------------------------------
-# Allow users to expose host-installed rviz plugins. Enabled by default; set
-# RVIZ2_SNAP_USE_HOST_OVERLAY=0 to disable.
-if [ "${RVIZ2_SNAP_USE_HOST_OVERLAY:-1}" = "1" ] && [ -d "/opt/ros/$ROS_DISTRO" ]; then
-    export AMENT_PREFIX_PATH="${AMENT_PREFIX_PATH:+$AMENT_PREFIX_PATH:}/opt/ros/$ROS_DISTRO"
-    export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/opt/ros/$ROS_DISTRO/lib:/opt/ros/$ROS_DISTRO/lib/$ARCH_TRIPLET"
-fi
+# Deb underlay: rviz vendor packages, ament index, rmw, ...
+source "${SNAP}/opt/ros/${ROS_DISTRO}/local_setup.bash"
+# colcon-built overlay: rviz_common, rviz_rendering, rviz_default_plugins, rviz2.
+source "${SNAP}/opt/ros/snap/local_setup.bash"
 
 exec "${original_args[@]}"
