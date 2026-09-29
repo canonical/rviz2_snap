@@ -51,7 +51,7 @@ jobs:
         #!/bin/bash
         set -euxo pipefail
         sudo apt-get update
-        sudo apt-get install -y xvfb
+        sudo apt-get install -y xvfb libglx-mesa0 libopengl0
         set +e
         timeout 40 xvfb-run -a rviz2
         rc=$?
