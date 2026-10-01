@@ -63,19 +63,11 @@ parts:
       # Qt's xcb platform plugin dlopen()s libxcb-cursor at runtime,
       # but no package declares it as a dependency.
       - libxcb-cursor0
-    prime:
-      # Do NOT ship the Mesa/GL/DRI userspace.
-      # This is a classic snap: the graphics stack must come from the host,
-      # whose kernel DRM driver it matches.
-      - -usr/lib/*/dri
-      - -usr/lib/*/libgallium*
-      - -usr/lib/*/libGLX_mesa.so*
-      - -usr/lib/*/libGLX_indirect.so*
-      - -usr/lib/*/libEGL_mesa.so*
-      - -usr/lib/*/libGL.so*
-      - -usr/lib/*/libGLX.so*
-      - -usr/lib/*/libGLdispatch.so*
-      - -usr/lib/*/libOpenGL.so*
-      - -usr/lib/*/libEGL.so*
-      - -usr/lib/*/libGLESv*
-      - -usr/lib/*/libdrm*
+
+  gpu-2404:
+    after: [rviz2]
+    source: https://github.com/canonical/gpu-snap.git
+    plugin: dump
+    override-prime: |
+      craftctl default
+      ${CRAFT_PART_SRC}/bin/gpu-2404-cleanup mesa-2404
