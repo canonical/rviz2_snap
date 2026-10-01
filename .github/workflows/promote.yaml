@@ -1,0 +1,21 @@
+name: promote
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'rviz2 track to promote from candidate to stable'
+        required: true
+        default: jazzy
+        type: choice
+        options:
+          - jazzy
+
+jobs:
+  snaps:
+    uses: canonical/robotics-actions-workflows/.github/workflows/promote.yaml@main
+    secrets:
+      snapstore-login: ${{ secrets.STORE_LOGIN }}
+    with:
+      snap: rviz2
+      from-channel: '${{ inputs.version }}/candidate'
+      to-channel: '${{ inputs.version }}/stable'

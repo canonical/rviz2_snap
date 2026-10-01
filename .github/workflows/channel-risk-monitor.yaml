@@ -1,0 +1,20 @@
+name: channel-risk-monitor
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+# Restrictive default for the whole workflow.
+permissions: {}
+
+jobs:
+  monitor:
+    permissions:
+      contents: read
+      issues: write
+    uses: canonical/robotics-actions-workflows/.github/workflows/channel-risk-sync-monitor.yaml@main
+    with:
+      snap-track: jazzy
+      snap-risk-aspirant: candidate
+      snap-risk-target: stable

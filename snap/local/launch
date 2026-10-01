@@ -1,0 +1,53 @@
+#!/bin/bash
+
+set -e
+
+# This snap is built exclusively for ROS 2 Jazzy.
+# If the user has sourced a different ROS distro before launching,
+# detect that, warn, and start from a clean ROS
+# environment before we build our own.
+SNAP_ROS_DISTRO=jazzy
+if [ -n "${ROS_DISTRO:-}" ] && [ "${ROS_DISTRO}" != "${SNAP_ROS_DISTRO}" ]; then
+    echo "rviz2 (snap): warning: host environment has ROS_DISTRO='${ROS_DISTRO}'," \
+         "but this snap provides '${SNAP_ROS_DISTRO}'. Ignoring the host ROS" \
+         "environment to avoid ABI conflicts." >&2
+    # Drop the ROS-exclusive path state sourced from the foreign distro.
+    unset AMENT_PREFIX_PATH CMAKE_PREFIX_PATH COLCON_PREFIX_PATH \
+          ROS_PACKAGE_PATH
+fi
+export ROS_DISTRO="${SNAP_ROS_DISTRO}"
+export ROS_VERSION="2"
+export ROS_HOME="${ROS_HOME:-${SNAP_USER_DATA}/ros}"
+
+original_args=("$@")
+
+# Multiarch tuple for the target architecture. snapd exports SNAP_ARCH;
+# map it to the GNU triplet used throughout the snap's library layout.
+case "${SNAP_ARCH}" in
+    amd64) ARCH_TRIPLET="x86_64-linux-gnu" ;;
+    arm64) ARCH_TRIPLET="aarch64-linux-gnu" ;;
+    *) echo "rviz2 (snap): unsupported architecture '${SNAP_ARCH}'" >&2; exit 1 ;;
+esac
+
+# Snap ROS 2 environment
+. "${SNAP}/opt/ros/${SNAP_ROS_DISTRO}/setup.bash"
+
+export LD_LIBRARY_PATH="\
+${SNAP}/usr/lib/${ARCH_TRIPLET}:\
+${SNAP}/usr/lib:\
+${LD_LIBRARY_PATH}"
+
+# Necessary so the host base GL libs are loaded from the host
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/lib/${ARCH_TRIPLET}:/lib/${ARCH_TRIPLET}"
+
+# Qt platform plugins
+qt_plugins="${SNAP}/usr/lib/${ARCH_TRIPLET}/qt5/plugins"
+export QT_PLUGIN_PATH="${qt_plugins}${QT_PLUGIN_PATH:+:${QT_PLUGIN_PATH}}"
+export QT_QPA_PLATFORM_PLUGIN_PATH="${qt_plugins}/platforms"
+
+# Deb underlay: rviz vendor packages, ament index, rmw, ...
+source "${SNAP}/opt/ros/${ROS_DISTRO}/local_setup.bash"
+# colcon-built overlay: rviz_common, rviz_rendering, rviz_default_plugins, rviz2.
+source "${SNAP}/opt/ros/snap/local_setup.bash"
+
+exec "${original_args[@]}"
