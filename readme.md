@@ -20,7 +20,7 @@ rviz2
 Because this is a **classic** snap,
 it runs in the host namespace and uses the
 host's ROS 2 graph and graphics stack.
-If you source your ROS 2 installation or a local workspace before launching, 
+If you source your ROS 2 Jazzy installation or a local Jazzy workspace before launching, 
 RViz 2 will discover and load the plugins available in that environment:
 
 ```bash
