@@ -6,8 +6,8 @@ description: |
   RViz is a 3D visualizer for the Robot Operating System 2 (ROS 2).
 
   This is a classic snap: rviz2 runs with full access to the host system so it
-  can subscribe to topics published by ROS 2 nodes running on the host and load
-  visualization plugins installed on the host under /opt/ros/jazzy.
+  load visualization plugins and message definition installed on the host under /opt/ros/jazzy or
+  in a local workspace.
 license: BSD-3-Clause
 
 confinement: classic
@@ -43,7 +43,7 @@ parts:
   rviz2:
     plugin: colcon
     source: https://github.com/ros2/rviz.git
-    source-branch: jazzy
+    source-tag: "14.1.24" # jazzy
     override-pull: |
       craftctl default
       version="$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' rviz2/package.xml)"
