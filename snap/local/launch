@@ -30,9 +30,9 @@ case "${SNAP_ARCH}" in
 esac
 
 # Snap ROS 2 environment
+. "${SNAP}/opt/ros/${SNAP_ROS_DISTRO}/setup.bash"
+
 export LD_LIBRARY_PATH="\
-${SNAP}/opt/ros/${ROS_DISTRO}/lib:\
-${SNAP}/opt/ros/${ROS_DISTRO}/lib/${ARCH_TRIPLET}:\
 ${SNAP}/usr/lib/${ARCH_TRIPLET}:\
 ${SNAP}/usr/lib:\
 ${LD_LIBRARY_PATH}"
