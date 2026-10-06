@@ -1,4 +1,5 @@
 name: rviz2
+title: RViz 2
 base: core24
 adopt-info: rviz2
 summary: 3D visualization tool for ROS 2
