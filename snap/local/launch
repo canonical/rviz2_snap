@@ -29,9 +29,6 @@ case "${SNAP_ARCH}" in
     *) echo "rviz2 (snap): unsupported architecture '${SNAP_ARCH}'" >&2; exit 1 ;;
 esac
 
-# Snap ROS 2 environment
-. "${SNAP}/opt/ros/${SNAP_ROS_DISTRO}/setup.bash"
-
 export LD_LIBRARY_PATH="\
 ${SNAP}/usr/lib/${ARCH_TRIPLET}:\
 ${SNAP}/usr/lib:\
