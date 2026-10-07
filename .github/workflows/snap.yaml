@@ -1,0 +1,61 @@
+name: snap
+on:
+  push:
+    tags:
+      - 'jazzy/*'
+    branches:
+      - jazzy
+    paths-ignore:
+      - .github/workflows/promote.yaml
+      - readme.md
+      - .gitignore
+  pull_request:
+    branches:
+      - jazzy
+    paths-ignore:
+      - .github/workflows/promote.yaml
+      - readme.md
+      - .gitignore
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      git-ref:
+        required: false
+        type: string
+        default: ${{ github.ref }}
+
+jobs:
+  snap:
+    permissions:
+      contents: read
+      actions: write
+    uses: canonical/robotics-actions-workflows/.github/workflows/snap.yaml@main
+    secrets:
+      snapstore-login: ${{ secrets.STORE_LOGIN }}
+    with:
+      git-ref: ${{ inputs.git-ref }}
+      # Build natively on both architectures: amd64 and arm64.
+      runs-on: '["ubuntu-latest", "ubuntu-24.04-arm"]'
+      # rviz2 is a classic snap; the default --dangerous alone cannot install it.
+      snap-install-args: --classic --dangerous
+      # Publish directly to the jazzy/candidate channel.
+      snap-track: jazzy
+      snap-risk: candidate
+      # GUI smoke test: launch rviz2 headless under xvfb on every runner (amd64
+      # and arm64). The classic snap strips its own Mesa and relies on host GL,
+      # so we install a software GL stack (llvmpipe) on the runner. rviz2 is a
+      # long-running GUI app, so we run it under `timeout`: surviving until the
+      # timeout kills it (exit 124) is success. A crash (e.g. SIGSEGV -> 139)
+      # fails the job. This doubles as a regression guard for the Mesa fix.
+      snap-test-script: |
+        #!/bin/bash
+        set -euxo pipefail
+        sudo apt-get update
+        sudo apt-get install -y xvfb libglx-mesa0 libopengl0
+        set +e
+        timeout 40 xvfb-run -a rviz2
+        rc=$?
+        set -e
+        # 124 = timeout killed a still-running rviz2 (success).
+        [ "$rc" -eq 124 ] || { echo "rviz2 did not survive startup (rc=$rc)"; exit 1; }
+        echo "rviz2 launched and survived the timeout window."
